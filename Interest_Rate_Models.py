@@ -23,8 +23,11 @@ pd.options.display.float_format = '{:,}'.format
 pd.options.display.max_rows = 10
 np.set_printoptions(linewidth=200)
 
+#=======================================================================================================================================================================================================
 """ Notes
 First: Develop the "Term Structure Modeling with No-Arbitrage Interest Rate Models
+There will be also model called "Equilibrium Models"
+One factor model represent the short of interest, whereas multifactor models incorporate a SDE for additional interest rates
 Single Factor model that assumes a stationary variance or, as it is more often called, volatility.
 The lattice is a representation of the model, capturing the distribution of rates over time.
 
@@ -40,12 +43,17 @@ Ultimately, the lattice must price optionless par bonds at par.
 Assumptions: rates at any point in time have the same probability of occurring; in other words, the probability is 50% on each leg.
 
 Interest tree model is based on a log-normal random walk with known stationary Volatility
-
-
-
+For an interest model to be useful for practical purposes, it is helpful to adapt them to a recombining lattice structure. This usually
+translates into a binomial or trinomial trees. 
 """
+#=======================================================================================================================================================================================================
 
 
+#=======================================================================================================================================================================================================
+"""        *** Ho-Lee Model***        """
+
+
+#=======================================================================================================================================================================================================
 
 
 
