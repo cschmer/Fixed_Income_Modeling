@@ -141,11 +141,54 @@ def factor(time):
 #===============================================================================
 # Testing helper functions
 multiplier = factor(5)
-#multiplier = [reversed(x) for x in multiplier]
-print(multiplier)
-print_lattice(multiplier, info=[])
+m_guess = 0.2 # initial guess for the second node
+nNodes = 5
+observedRates = [0.10,0.11,0.12,0.125,0.13]
+vol = [0.20,0.19,0.18,0.1622,0.14365]
 
-multiplier = [list(reversed(x) for x in multiplier)][:]
+zCBond_0 = 100 / (1 + observedRates[0])**1
+zCBond_1 = 100 / (1 + observedRates[1])**2
+zCBond_2 = 100 / (1 + observedRates[2])**3
+zCBond_3 = 100 / (1 + observedRates[3])**4
+zCBond_4 = 100 / (1 + observedRates[4])**5
+
+pv = [zCBond_0, zCBond_1, zCBond_2, zCBond_3, zCBond_4]
+
+temp_rate_tracker = [[observedRates[0]]]
+
+def bdtONE(guess):
+    ru = guess * math.exp(2 * vol[1])
+    rd = guess
+    N1 = 100 / (1+ru)
+    N2 = 100 / (1+rd)
+    return (0.5*((N1/(1+observedRates[0])) + (N2/(1+observedRates[0]))) - zCBond_1)
+
+g = fsolve(bdtONE, m_guess)[0]
+
+ru = g * math.exp(2 * vol[1])
+rd = g
+
+m = [0.1,0.1] # Guess list data structure for node 2 and above
+
+final_rate_tracker = [[]]
+temp_rate_tracker = [[observedRates[0]], [ru,rd]]
+
+mo = [[0.1],[rd,1]] # 1 means first node
+m = [0.1,0.1]
+
+final_rate_tracker = temp_rate_tracker[1:]
+
+def rateCalculator(m,node):
+    rate = []
+    for x in range(0,node+1):
+        if x == node:
+            rate.append(m[0])
+        else:
+            rate.append(m[0] * math.exp(multiplier[node][x] * m[1]))
+    return rate
+
+def valueCalculator(m,):
+
 
 #===============================================================================
 
