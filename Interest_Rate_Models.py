@@ -73,7 +73,6 @@ The 3 key features are:
 
 """
 
-
 #=======================================================================================================================================================================================================
 
 
@@ -86,8 +85,8 @@ def print_lattice(lattice, info=[]):
     levels = len(lattice[-1])
     start_date = len(lattice[0]) - 1
     dates = levels - start_date
-    outlist = []                        # no fucking idea why that yet
-    col_widths = [0] * dates            # list of zeros
+    outlist = []  # no fucking idea why that yet
+    col_widths = [0] * dates  # list of zeros
     for j in range(dates):
         level = []
         for k in range(dates):
@@ -95,8 +94,8 @@ def print_lattice(lattice, info=[]):
                 point = "{:.16f}".format(lattice[k][levels - 1 - j])
                 esc_width = 0
                 if info != [] and info[k][levels - 1 - j] > 0:
-                    point = (point,'red')
-                    esc_width +=9
+                    point = (point, 'red')
+                    esc_width += 9
                 level.append(point)
                 col_widths[k] = max(col_widths[k], len(point) - esc_width)
             except IndexError:
@@ -116,18 +115,19 @@ def print_lattice(lattice, info=[]):
 #===============================================================================
 # Implement a Function to help generate the Multipliers or Factors
 
+
 def factor(time):
     """
     Helper function to generate the multipliers
     """
-    factor = [[]] # List of lists with numbers increasing by a factor equal 2
+    factor = [[]]  # List of lists with numbers increasing by a factor equal 2
     temp = []
     for x in range(time):
         if x == 0:
             factor[0].append(0)
         else:
-            for y in range(0,x+1):
-                if y==0:
+            for y in range(0, x + 1):
+                if y == 0:
                     temp.append(1)
                 else:
                     temp.append(y * 2)
@@ -138,113 +138,116 @@ def factor(time):
                     
 #===============================================================================
 
+
 #===============================================================================
 # Testing helper functions
 multiplier = factor(5)
-m_guess = 0.2 # initial guess for the second node
-nNodes = 5
-observedRates = [0.10,0.11,0.12,0.125,0.13]
-vol = [0.20,0.19,0.18,0.1622,0.14365]
 
-zCBond_0 = 100 / (1 + observedRates[0])**1
-zCBond_1 = 100 / (1 + observedRates[1])**2
-zCBond_2 = 100 / (1 + observedRates[2])**3
-zCBond_3 = 100 / (1 + observedRates[3])**4
-zCBond_4 = 100 / (1 + observedRates[4])**5
+multiplier = [list(reversed(x)) for x in multiplier][:]
+m_guess = 0.2  # initial guess for the second node
+nNodes = 5
+observedRates = [0.10, 0.11, 0.12, 0.125, 0.13]
+vol = [0.20, 0.19, 0.18, 0.1622, 0.14365]
+
+zCBond_0 = 100 / (1 + observedRates[0]) ** 1
+zCBond_1 = 100 / (1 + observedRates[1]) ** 2
+zCBond_2 = 100 / (1 + observedRates[2]) ** 3
+zCBond_3 = 100 / (1 + observedRates[3]) ** 4
+zCBond_4 = 100 / (1 + observedRates[4]) ** 5
 
 pv = [zCBond_0, zCBond_1, zCBond_2, zCBond_3, zCBond_4]
 
 temp_rate_tracker = [[observedRates[0]]]
 
+
 def bdtONE(guess):
     ru = guess * math.exp(2 * vol[1])
     rd = guess
-    N1 = 100 / (1+ru)
-    N2 = 100 / (1+rd)
-    return (0.5*((N1/(1+observedRates[0])) + (N2/(1+observedRates[0]))) - zCBond_1)
+    N1 = (100) / (1 + ru)
+    N2 = (100) / (1 + rd)
+    return (0.5 * ((N1 / (1 + observedRates[0])) + (N2 / (1 + observedRates[0]))) - zCBond_1)
+
 
 g = fsolve(bdtONE, m_guess)[0]
 
 ru = g * math.exp(2 * vol[1])
 rd = g
 
-m = [0.1,0.1] # Guess list data structure for node 2 and above
+m = [0.1, 0.1]  # Guess list data structure for node 2 and above
 
 final_rate_tracker = [[]]
-temp_rate_tracker = [[observedRates[0]], [ru,rd]]
+temp_rate_tracker = [[observedRates[0]], [ru, rd]]
 
-mo = [[0.1],[rd,1]] # 1 means first node
-m = [0.1,0.1]
+mo = [[0.1], [rd, 1]]  # 1 means first node
+m = [0.1, 0.1]
 
 final_rate_tracker = temp_rate_tracker[1:]
 
-def rateCalculator(m,node):
+
+def rateCalculator(m, node):
     rate = []
-    for x in range(0,node+1):
+    for x in range(0, node + 1):
         if x == node:
             rate.append(m[0])
         else:
             rate.append(m[0] * math.exp(multiplier[node][x] * m[1]))
     return rate
 
-def valueCalculator(m,):
+
+def valueCalculator(m, node, final_rate_tracker):
+    nValue = []
+    nValue2 = []
+    rate = []
+    final_rate_tracker = final_rate_tracker[:]
+    final_rate_tracker.reverse()
+    for x in range(node + 1):
+        if x == node:
+            rate.append(float(m[0]))
+        else:
+            rate.append(m[0] * math.exp(multiplier[node][x] * m[1]))
+    
+    for x in range(len(rate)):
+        nValue2.append(((100) / (1 + rate[x])))
+        nValue = copy.deepcopy(nValue2)
+    
+    nValue2 = []
+    y = 0
+    
+    while len(nValue) > 2:
+        if len(nValue) <= 2:
+            break
+        
+        for x in range(len(nValue) - 1):
+            nValue2.append((0.5 * ((nValue[x]) + (nValue[x + 1]))) / (1 + final_rate_tracker[y][x]))
+        
+        if y == 0:
+            yu = math.sqrt(100 / nValue2[0]) - 1
+            yd = math.sqrt(100 / nValue2[1]) - 1
+        rate = []
+        y = y + 1
+        nValue = nValue2[:]
+        nValue2 = []
+        
+    out = [(0.5 * ((nValue[0]) + (nValue[1])) / (1 + temp_rate_tracker[0][0]) - pv[node])]
+    out.append((0.5 * math.log(yu / yd) - vol[node]))
+    return out
 
 
-#===============================================================================
+def solutionIterator(mo, nNodes, final_rate_tracker, temp_rate_tracker):
+    
+    for x in range(2, nNodes):
+        data = (x, final_rate_tracker)
+        mo.append(fsolve(valueCalculator, m, args=data))
+        temp_rate_tracker.append(rateCalculator(mo[x], x))
+        final_rate_tracker = temp_rate_tracker[1:]
+        data = (x, final_rate_tracker)
+    return temp_rate_tracker
 
 
-#===============================================================================
-# Calculate the rates at each node for year 2
+final_rate_tracker = solutionIterator(mo, nNodes, final_rate_tracker, temp_rate_tracker)[:]
 
+reversed_lists = [list(reversed(x)) for x in final_rate_tracker]
 
-#===============================================================================
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+finalLattice = [[100 * y for y in x] for x in reversed_lists]
+print_lattice(finalLattice, info=[])
 
