@@ -281,11 +281,82 @@ def exercise_value(K, R, t):
     return K * np.exp(-R * t)
 
 
+""" *** OPTIONS *** """
 
+class StockOption(object):
+    """ Store common attributes of a stock option """
+    def __init__(self, S0, K, r, T, N, params):
+        self.S0 = S0      # Spot price
+        self.K = K        # Strike price
+        self.r = r        # Risk-free rate
+        self.T = T        # Time to maturity
+        self.N = max(1,N) # Ensure N have at least 1 time stop
+        self.STs = None   # Declare the stock prices tree
+        
+        """Optional parameters used by derived classes
+        NOTE: how to properly calculate these probabilities?
+        For risk-neutral they will be 0.5
+        Params is a dictionary object"""
+        self.pu = params.get('pu',0)                        # Expected return up state
+        self.pd = params.get('pd',0)                        # Expected return down state
+        self.div = params.get('div',0)                      # Dividend Yield ----- Note: Can I use this for Coupon when working with bonds?
+        self.sigma = params.get('sigma',0)                  # Stock Volatility
+        self.is_call = params.get('is_call', True)          # Call or Put
+        self.is_european = params.get('is_european', True)  # European or American options
+        
+        """ Computed values """
+        self.dt = T / N # Single time step, in years
+        self.df = np.exp(-(r - self.div) * self.dt)
+        
 
+class BinomialEuropeanOption(StockOption):
+    """ Price a European option by the binomial tree model """
+    def __setup_parameters__(self):
+        self.M = self.N + 1 # Number of terminal nodes of tree
+        self.u = 1 + self.pu # Expected value in the up state ----- Note: I think pu has the wrong name-description
+        self.d = 1 - self.pd # Expected value in the down state
+        self.qu = (np.exp((self.r - self.div) * self.dt) - self.d) / (self.u - self.d) # Risk-neutral probability q up state
+        self.qd = 1 - self.qu
+    
+    def _initialize_stock_price_tree_(self):
+        """Initialize terminal price nodes to zeros"""
+        # only prices at the end of the tree
+        self.STs = np.zeros(self.M) 
+        
+        # Calculate expected stock prices for each node
+        # self.u**() starts at N and go to 0
+        # self.d**() starts at 0 and goes to N
+        for i in range(self.M):
+            self.STs[i] = self.S0 * (self.u**(self.N - i)) * (self.d**i)
+        
+        
+    def _initialize_payoffs_tree_(self):
+        """Get payoffs when the option expires at terminal nodes"""
+        # only payoffs at the end of the tree
+        payoffs = np.maximum(0,                                     # use of maximum because it works element-wise
+                             (self.STs - self.K) if self.is_call    # Call option bit
+                             else (self.K - self.STs))              # Put option bit
+        
+        return payoffs
+        
+        
+      
+    
 
+u = 1.2
+d = 0.8
+N = 2
+M = N + 1
+m_array = np.zeros(M)
+k = 52
+print(m_array)
+for i in range(M):
+    m_array[i] = 50 * (u**(N - i)) * (d**i)
+    
+print(m_array)
 
-
+payoffs = np.maximum(0,m_array-k)
+print(payoffs)
 
 
 
