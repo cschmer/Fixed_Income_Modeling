@@ -321,15 +321,14 @@ class BinomialEuropeanOption(StockOption):
     def _initialize_stock_price_tree_(self):
         """Initialize terminal price nodes to zeros"""
         # only prices at the end of the tree
-        self.STs = np.zeros(self.M) 
-        
+        self.STs = np.zeros(self.M)
+        print(self.STs)
         # Calculate expected stock prices for each node
         # self.u**() starts at N and go to 0
         # self.d**() starts at 0 and goes to N
         for i in range(self.M):
             self.STs[i] = self.S0 * (self.u**(self.N - i)) * (self.d**i)
-        
-        
+        print(self.STs)
     def _initialize_payoffs_tree_(self):
         """Get payoffs when the option expires at terminal nodes"""
         # only payoffs at the end of the tree
@@ -338,31 +337,42 @@ class BinomialEuropeanOption(StockOption):
                              else (self.K - self.STs))              # Put option bit
         
         return payoffs
-        
+    
+    
+    
+    def _traverse_tree_(self, payoffs):
+        """Starting from the time the option expires, traverse
+        backwards and calculate discounted payoffs at each node
+        Note: only calculate the payoffs at one period after maturity
+        """
+        for i in range(self.N):
+            payoffs = (payoffs[:-1] * self.qu + payoffs[1:] * self.qd) * self.df
+        return payoffs
+    
+    def __begin_tree_traversal__(self):
+        payoffs = self._initialize_payoffs_tree_() # Get payoffs when the option expires at terminal nodes
+        return self._traverse_tree_(payoffs)
+    
+    def price(self):
+        """ The pricing implementation
+        Note: it works like a wrapper function """
+        self.__setup_parameters__()
+        self._initialize_stock_price_tree_()
+        payoffs = self.__begin_tree_traversal__()
+        return payoffs
+    
         
       
-    
 
-u = 1.2
-d = 0.8
-N = 2
-M = N + 1
-m_array = np.zeros(M)
-k = 52
-print(m_array)
-for i in range(M):
-    m_array[i] = 50 * (u**(N - i)) * (d**i)
-    
-print(m_array)
-
-payoffs = np.maximum(0,m_array-k)
-print(payoffs)
+eu_option = BinomialEuropeanOption(S0=50,
+                                   K= 50,
+                                   r= 0.05,
+                                   T=0.5,
+                                   N=2,
+                                   params={'pu':0.2, 'pd':0.2, 'is_call':False})
 
 
-
-
-
-
+print(eu_option.price())
 
 
 
