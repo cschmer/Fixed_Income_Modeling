@@ -282,162 +282,65 @@ def exercise_value(K, R, t):
 
 
 """ *** OPTIONS *** """
-
-class StockOption(object):
-    """ Store common attributes of a stock option """
-    def __init__(self, S0, K, r, T, N, params):
-        self.S0 = S0      # Spot price
-        self.K = K        # Strike price
-        self.r = r        # Risk-free rate
-        self.T = T        # Time to maturity
-        self.N = max(1,N) # Ensure N have at least 1 time stop
-        self.STs = None   # Declare the stock prices tree
+class EuropeanOption_CRR():
+    """ Adapted from 'Python for Finance' book page 221"""
+    """ This is the Cox-Ross-Rubinstein (CRR) model """
+    def __init__(self,S0,K,T,r,volatility,M,div_yield,is_call=True):
+        self.S0 = S0
+        self.K = K
+        self.T = T
+        self.r = r
+        self.volatility = volatility
+        self.M = M
+        self.dt = self.T / self.M
+        self.div_yield = div_yield
+        self.df = np.exp(-(self.r - self.div_yield) * self.dt)
+        self.u = np.exp(self.volatility * np.sqrt(self.dt))
+        self.d = 1/self.u
+        self.q = (np.exp((self.r - self.div_yield)*self.dt) - self.d) / (self.u - self.d)
+        self.is_call = is_call
+    
+    def OptionPrice(self):
+        mu = np.arange(self.M + 1)
+        mu = np.resize(mu, (self.M + 1,self.M + 1))
+        md = np.transpose(mu)
+        mu = self.u ** (mu - md)
+        md = self.d ** md
+        S = self.S0 * mu * md
         
-        """Optional parameters used by derived classes
-        NOTE: how to properly calculate these probabilities?
-        For risk-neutral they will be 0.5
-        Params is a dictionary object"""
-        self.pu = params.get('pu',0)                        # Expected return up state
-        self.pd = params.get('pd',0)                        # Expected return down state
-        self.div = params.get('div',0)                      # Dividend Yield ----- Note: Can I use this for Coupon when working with bonds?
-        self.sigma = params.get('sigma',0)                  # Stock Volatility
-        self.is_call = params.get('is_call', True)          # Call or Put
-        self.is_european = params.get('is_european', True)  # European or American options
-        
-        """ Computed values """
-        self.dt = T / N # Single time step, in years
-        self.df = np.exp(-(r - self.div) * self.dt)
-        
-
-class BinomialEuropeanOption(StockOption):
-    """ Price a European option by the binomial tree model """
-    def __setup_parameters__(self):
-        self.M = self.N + 1 # Number of terminal nodes of tree
-        self.u = 1 + self.pu # Expected value in the up state ----- Note: I think pu has the wrong name-description
-        self.d = 1 - self.pd # Expected value in the down state
-        self.qu = (np.exp((self.r - self.div) * self.dt) - self.d) / (self.u - self.d) # Risk-neutral probability q up state
-        self.qd = 1 - self.qu
-    
-    def _initialize_stock_price_tree_(self):
-        """Initialize terminal price nodes to zeros"""
-        # only prices at the end of the tree
-        self.STs = np.zeros(self.M)
-        print(self.STs)
-        # Calculate expected stock prices for each node
-        # self.u**() starts at N and go to 0
-        # self.d**() starts at 0 and goes to N
-        for i in range(self.M):
-            self.STs[i] = self.S0 * (self.u**(self.N - i)) * (self.d**i)
-        print(self.STs)
-    def _initialize_payoffs_tree_(self):
-        """Get payoffs when the option expires at terminal nodes"""
-        # only payoffs at the end of the tree
-        payoffs = np.maximum(0,                                     # use of maximum because it works element-wise
-                             (self.STs - self.K) if self.is_call    # Call option bit
-                             else (self.K - self.STs))              # Put option bit
-        
-        return payoffs
-    
-    
-    
-    def _traverse_tree_(self, payoffs):
-        """Starting from the time the option expires, traverse
-        backwards and calculate discounted payoffs at each node
-        Note: only calculate the payoffs at one period after maturity
-        """
-        for i in range(self.N):
-            payoffs = (payoffs[:-1] * self.qu + payoffs[1:] * self.qd) * self.df
-        return payoffs
-    
-    def __begin_tree_traversal__(self):
-        payoffs = self._initialize_payoffs_tree_() # Get payoffs when the option expires at terminal nodes
-        return self._traverse_tree_(payoffs)
-    
-    def price(self):
-        """ The pricing implementation
-        Note: it works like a wrapper function """
-        self.__setup_parameters__()
-        self._initialize_stock_price_tree_()
-        payoffs = self.__begin_tree_traversal__()
-        return payoffs
-    
-        
-      
-
-eu_option = BinomialEuropeanOption(S0=50,
-                                   K= 50,
-                                   r= 0.05,
-                                   T=0.5,
-                                   N=2,
-                                   params={'pu':0.2, 'pd':0.2, 'is_call':False})
-
-
-print(eu_option.price())
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        if self.is_call is True:
+            pv = np.maximum(S - self.K, 0)
+        else:
+            pv = np.maximum(self.K - S, 0)
+        z = 0
+        for t in range(self.M-1, -1, -1):
+            pv[0:self.M - z, t] = (self.q * pv[0:self.M - z, t+1] + (1 - self.q) * pv[1:self.M - z + 1, t+1]) * self.df
+            z +=1
+        #print(pv)
+        return pv[0,0]
+
+
+# price = EuropeanOption_CRR(S0=50,
+#                    K=50,
+#                    T=0.5,
+#                    r= 0.05,
+#                    volatility= 0.30,
+#                    M= 2,
+#                    div_yield= 0,
+#                    is_call=False)
+# preco = price.OptionPrice()
+# print(preco)
+
+
+
+"""
+It is known as the Leisen-Reimer (LR) tree, and the nodes do not
+recombine at every alternate step. It uses an inversion formula to achieve better
+accuracy during tree transversal.
+We will be using method two of the Peizer and Pratt Inversion function f with the
+following characteristic parameters:
+
+"""
 
 
 
