@@ -34,7 +34,7 @@ class BootstrapYieldCurve(object):
         self.zero_rates = dict() # Map each T to a zero rate
         self.instruments = dict() # Map each T to an instrument
 
-    def add_instrument(self, par, T, coup, price,compounding_freq=2):
+    def add_instrument(self, par, T, coup, price,compounding_freq=2): # Coupon is in $ terms
         """ Save instrument info by maturity """
         self.instruments[T] = (par, coup, price, compounding_freq)
         
@@ -50,7 +50,7 @@ class BootstrapYieldCurve(object):
         
     def __bootstrap_zero_coupons__(self):
         """ Get zero rates from zero coupon bonds """
-        for T in self.instruments.iterkeys():
+        for T in self.instruments.items(): # Python 3 changed the name
             (par, coup, price, freq) = self.instruments[T]
             if coup == 0:
                 self.zero_rates[T] = self.zero_coupon_spot_rate(par, price, T)
@@ -89,7 +89,24 @@ class BootstrapYieldCurve(object):
         spot_rate = math.log(par/price)/T
         return spot_rate
 
-        
+
+
+yield_curve = BootstrapYieldCurve()
+yield_curve.add_instrument(100,0.25,0,97.5)
+yield_curve.add_instrument(100,0.50,0,94.9)
+yield_curve.add_instrument(100,1.00,0,90.0)
+yield_curve.add_instrument(100,1.50,8,96.0,2)
+yield_curve.add_instrument(100,2,12,101.6,2)
+ 
+ 
+y = yield_curve.get_zero_rates()
+print(y)
+x = yield_curve.get_maturities()
+print(x)
+
+    
+
+       
 class ForwardRates(object):
     """
     Get a list of forward rates
