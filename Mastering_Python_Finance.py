@@ -28,85 +28,76 @@ def zero_coupon_bond(par, y, t):
     return par/(1+y)**t
 
 
+   
 class BootstrapYieldCurve(object):
-    """ Bootstrapping the yield curve """
+    
     def __init__(self):
-        self.zero_rates = dict() # Map each T to a zero rate
-        self.instruments = dict() # Map each T to an instrument
-
-    def add_instrument(self, par, T, coup, price,compounding_freq=2): # Coupon is in $ terms
-        """ Save instrument info by maturity """
-        self.instruments[T] = (par, coup, price, compounding_freq)
+        self.zero_rates = dict()  # Map each T to a zero rate
+        self.instruments = dict()  # Map each T to an instrument
         
+    def add_instrument(self, par, T, coup, price,
+                       compounding_freq=2):
+        """  Save instrument info by maturity """
+        self.instruments[T] = (par, coup, price, compounding_freq)
+    
     def get_zero_rates(self):
-        """ Calculate a list of available zero rates """
+        """  Calculate a list of available zero rates """
         self.__bootstrap_zero_coupons__()
         self.__get_bond_spot_rates__()
         return [self.zero_rates[T] for T in self.get_maturities()]
-    
+        
     def get_maturities(self):
         """ Return sorted maturities from added instruments. """
         return sorted(self.instruments.keys())
         
     def __bootstrap_zero_coupons__(self):
         """ Get zero rates from zero coupon bonds """
-        for T in self.instruments.items(): # Python 3 changed the name
+        for T in self.instruments.iterkeys():
             (par, coup, price, freq) = self.instruments[T]
             if coup == 0:
                 self.zero_rates[T] = self.zero_coupon_spot_rate(par, price, T)
-    
+                    
     def __get_bond_spot_rates__(self):
-        """ Get spot rates for every maturity available """
+        """ Get spot rates for every marurity available """
         for T in self.get_maturities():
             instrument = self.instruments[T]
             (par, coup, price, freq) = instrument
+
             if coup != 0:
-                self.zero_rates[T] = self.__calculate_bond_spot_rate__(T, instrument)
+                self.zero_rates[T] = self.__calculate_bond_spot_rate__(T,
+                                                                       instrument)
                 
     def __calculate_bond_spot_rate__(self, T, instrument):
         """ Get spot rate of a bond by bootstrapping """
         try:
             (par, coup, price, freq) = instrument
-            periods = T * freq # Number of coupon payments
+            periods = T * freq  # Number of coupon payments
             value = price
-            per_coupon = coup / freq # Coupon per period
+            per_coupon = coup / freq  # Coupon per period
+
             for i in range(int(periods)-1):
                 t = (i+1)/float(freq)
                 spot_rate = self.zero_rates[t]
                 discounted_coupon = per_coupon * \
-                math.exp(-spot_rate*t)
+                                    math.exp(-spot_rate*t)
                 value -= discounted_coupon
-            last_period = int(periods)/float(freq)
+
+            # Derive spot rate for a particular maturity
+            last_period = int(periods)/float(freq)        
             spot_rate = -math.log(value /
-            (par+per_coupon))/last_period
+                                  (par+per_coupon))/last_period
             return spot_rate
 
         except:
-            print( "Error: spot rate not found for T=%s" % t)
-
+            print("Error: spot rate not found for T=%s" % t)
+            
     def zero_coupon_spot_rate(self, par, price, T):
         """ Get zero rate of a zero coupon bond """
         spot_rate = math.log(par/price)/T
         return spot_rate
 
 
-
-yield_curve = BootstrapYieldCurve()
-yield_curve.add_instrument(100,0.25,0,97.5)
-yield_curve.add_instrument(100,0.50,0,94.9)
-yield_curve.add_instrument(100,1.00,0,90.0)
-yield_curve.add_instrument(100,1.50,8,96.0,2)
-yield_curve.add_instrument(100,2,12,101.6,2)
- 
- 
-y = yield_curve.get_zero_rates()
-print(y)
-x = yield_curve.get_maturities()
-print(x)
-
     
-
-       
 class ForwardRates(object):
     """
     Get a list of forward rates
@@ -133,11 +124,12 @@ class ForwardRates(object):
         return self.forward_rates
 
 
+
 def bond_ytm(price, par, T, coup, freq=2, guess=0.05):
     """ Get yield-to-maturity of a bond
         To solve for YTM is typically a complex process, and most bond
         YTM calculators use Newton's method as an iterative process."""
-    """NOTE: make use this function works in real life problem"""
+    """NOTE: make sure this function works in real life problem"""
     freq = float(freq) # Don't think this is required for Python 3 and above anymore as all divisions will result in float numbers
     periods = T * freq
     coupon = (coup / 100) * (par / freq)
@@ -147,6 +139,7 @@ def bond_ytm(price, par, T, coup, freq=2, guess=0.05):
     # returning the YTM function will not provide any value
     # we still need to evaluate it
     return sco.newton(func=ytm_func, x0=guess)
+
     
 def bond_price(ytm, par, T, coup, freq=2):
     """ Get bond price from YTM """
@@ -178,7 +171,8 @@ def bond_mod_duration(price, par, T, coup, freq, dy=0.01):
     price_pos = bond_price(ytm=(ytm + dy), par=par, T=T, coup=coup, freq=freq)
     
     return (price_neg - price_pos) / (2 * price * dy)
-    
+
+
 
 def bond_convexity(price, par, T, coup, freq, dy=0.01):
     """
@@ -201,7 +195,15 @@ def one_factor_vasicek(r0, K, theta, sigma, T=1., N=10, seed=777):
     """ Simulate interest rate path by the Vasicek model """
     """
     In the one-factor Vasicek model, the short rate is modeled as a
-    single stochastic factor
+    single stochastic factor.
+    
+                dr(t) = K(theta - r(t))dt + sigma*dW(t)
+                
+                K, theta, and sigma are constants with sigma --> instantaneous standard deviation
+                r0 : initial rate of interest at t=0
+                T : period in terms of number of years
+                N is the number of intervals for the modeling process
+                W(t) : random Wiener process
     From the book:
         The Vasicek follows an Ornstein-Uhlenbeck process,
         where the model reverts around the mean  with K, the speed of
@@ -209,11 +211,7 @@ def one_factor_vasicek(r0, K, theta, sigma, T=1., N=10, seed=777):
         which is an undesirable property in most normal economic conditions.
         
         Really? Nowadays is reality.
-    r0 : initial rate of interest at t=0
-    T : period in terms of number of years
-    N is the number of intervals for the modeling process
-    sigma : instantaneous standard deviation
-    W(t) : random Wiener process
+    
     seed is the initialization value for NumPy's standard normal random number generator.
     
     Question: How to design a vectorized Vasicek Model?
@@ -228,11 +226,16 @@ def one_factor_vasicek(r0, K, theta, sigma, T=1., N=10, seed=777):
     return range(N+1), rates
 
 
-def cox_ingersoll_ross(r0, K, theta, sigma, T=1.,N=10,seed=777):
+
+def one_factor_cox_ingersoll_ross(r0, K, theta, sigma, T=1.,N=10,seed=777):
     """ Simulate interest rate path by the CIR model """
     """
     The Cox-Ingersoll-Ross (CIR) model is a one-factor model that was proposed
     to address the negative interest rates found in the Vasicek model.
+    
+                dr(t) = K(theta - r(t))dt + sigma*sqrt(r(t))*dW(t)
+                
+                The term sqrt(r(t)) increases the std deviation as the short rates increases
     """
     np.random.seed(seed)
     dt = T / N
@@ -244,9 +247,12 @@ def cox_ingersoll_ross(r0, K, theta, sigma, T=1.,N=10,seed=777):
     return range(N+1), rates
 
 
-def rendleman_bartter(r0, theta, sigma, T=1.,N=10,seed=777):
+
+def one_factor_rendleman_bartter(r0, theta, sigma, T=1.,N=10,seed=777):
     """ Simulate interest rate path by the Rendleman-Barter model """
     """
+                    dr(t) = theta*r(t) + sigma*r(t)*dW(t)
+                    
     Here, the instantaneous drift is theta*r(t) with an instantaneous
     standard deviation sigma*r(t). The Rendleman and Bartter model can
     be thought of as a geometric Brownian motion, akin to a stock price
@@ -269,8 +275,10 @@ def rendleman_bartter(r0, theta, sigma, T=1.,N=10,seed=777):
 def brennan_schwartz(r0, K, theta, sigma, T=1., N=10, seed=777):
     """ Simulate interest rate path by the Brennan Schwartz model """
     """
+                    dr(t) = K(theta - t(t))dt + sigma*r(t)*dW(t)
     The Brennan and Schwartz model is a two-factor model where the short-rate
     reverts toward a long rate as the mean, which also follows a stochastic process.
+    It can be seen that the Brennan and Schwartz model is another form of a geometric Brownian motion.
     """
     np.random.seed(seed)
     dt = T / N
@@ -289,13 +297,21 @@ def exact_zcb(theta, kappa, sigma, tau, r0=0.):
     return A * np.exp(-r0 * B)
 
 
+
+
 def exercise_value(K, R, t):
     """
+    Issuers of callable bonds may redeem the bond at an agreed price as specified in
+    the contract. To price such a bond, the discounted early-exercise values can be
+    defined as:
+    
+                discounted early exercise value = K*exp(-R*t)
     Implementation of the early-exercise option
-    k is the price ratio of the strike price to the par value
+    K is the price ratio of the strike price to the par value
     r is the interest rate for the strike price.
     """
     return K * np.exp(-R * t)
+
 
 
 """ *** OPTIONS *** """
